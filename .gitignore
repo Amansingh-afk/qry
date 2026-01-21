@@ -1,0 +1,70 @@
+# Binaries
+qry
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build output
+dist/
+bin/
+
+# Test binary
+*.test
+
+# Go workspace
+go.work
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# AI Tools
+.cursor/
+.claude/
+.claude_settings
+.cursorignore
+.cursorrules
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Nix
+result
+result-*
+.nix-*
+
+# Direnv
+.direnv/
+
+# Config (local testing)
+.qry.yaml
+.qry.json
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage.out
+coverage.html
+
+# Vendor (if not committing)
+# vendor/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
