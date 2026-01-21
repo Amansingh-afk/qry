@@ -102,10 +102,11 @@ func runChat(cmd *cobra.Command, args []string) {
 				sqlPrompt = prompt.BuildFollowUp(input)
 			}
 
-			// Show loading spinner
+			// Show loading spinner with timer
 			stopSpinner := ui.Spinner()
 			queryRes, err := b.Query(queryCtx, sqlPrompt, workDir, opts)
-			stopSpinner()
+			duration := stopSpinner()
+			ui.QueryDone(duration)
 
 			queryCancel()
 

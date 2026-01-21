@@ -115,10 +115,12 @@ func Thinking(backend string) {
 	fmt.Print(dimStyle.Render(fmt.Sprintf("● %s ", backend)))
 }
 
-// Spinner shows an animated loading spinner and returns a stop function
-func Spinner() func() {
+// Spinner shows an animated loading spinner with elapsed time and returns a stop function
+// The stop function returns the elapsed duration
+func Spinner() func() time.Duration {
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	done := make(chan struct{})
+	start := time.Now()
 
 	go func() {
 		i := 0
@@ -127,21 +129,29 @@ func Spinner() func() {
 			case <-done:
 				return
 			default:
-				fmt.Print(dimStyle.Render(fmt.Sprintf("\r  %s thinking...", frames[i%len(frames)])))
+				elapsed := time.Since(start).Seconds()
+				fmt.Print(dimStyle.Render(fmt.Sprintf("\r  %s thinking... %.1fs", frames[i%len(frames)], elapsed)))
 				i++
 				time.Sleep(80 * time.Millisecond)
 			}
 		}
 	}()
 
-	return func() {
+	return func() time.Duration {
 		close(done)
+		elapsed := time.Since(start)
 		fmt.Print("\r\033[K") // Clear the line
+		return elapsed
 	}
 }
 
 func ClearLine() {
 	fmt.Print("\r\033[K")
+}
+
+// QueryDone shows completion time
+func QueryDone(duration time.Duration) {
+	fmt.Printf("  %s\n", dimStyle.Render(fmt.Sprintf("%.1fs", duration.Seconds())))
 }
 
 func ServerStarting(port int, dir string) {
