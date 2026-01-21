@@ -24,6 +24,12 @@ Or with Go:
 go install github.com/amansingh-afk/qry@latest
 ```
 
+## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/uninstall.sh | bash
+```
+
 ## Quick Start
 
 ```bash
