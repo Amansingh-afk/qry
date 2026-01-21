@@ -27,7 +27,9 @@ var (
 	infoStyle   = lipgloss.NewStyle().Foreground(cyan)
 )
 
-const version = "0.2.0"
+// version is set via ldflags at build time
+// -X github.com/amansingh-afk/qry/internal/ui.version=v1.0.0
+var version = "dev"
 
 func Banner() string {
 	q := cyanStyle.Render(`

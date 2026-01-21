@@ -42,11 +42,16 @@
           CGO_ENABLED = "0";
         };
 
-        packages.default = pkgs.buildGoModule {
+        packages.default = pkgs.buildGoModule rec {
           pname = "qry";
-          version = "0.1.0";
+          version = "0.3.1";
           src = ./.;
           vendorHash = null;
+
+          ldflags = [
+            "-s" "-w"
+            "-X github.com/amansingh-afk/qry/internal/ui.version=${version}"
+          ];
 
           meta = with pkgs.lib; {
             description = "Ask. Get SQL.";
