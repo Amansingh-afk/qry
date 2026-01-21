@@ -39,6 +39,7 @@ qry q "find inactive users"
 | `qry q "query"` | One-shot SQL generation |
 | `qry chat` | Interactive session |
 | `qry init` | Setup config |
+| `qry init --force` | Reset session (re-index codebase) |
 | `qry serve` | Start API server |
 
 ## One-shot Mode
@@ -52,12 +53,10 @@ qry q "complex query" --dry-run
 
 ## Interactive Mode
 
-Start a chat session with context persistence:
+Start a chat session:
 
 ```bash
-qry chat                    # New session
-qry chat --continue         # Resume last session
-qry chat -r <session-id>    # Resume specific session
+qry chat
 ```
 
 Follow-up questions work naturally:
@@ -70,16 +69,56 @@ SELECT * FROM users WHERE status = 'active';
 SELECT * FROM users WHERE status = 'active' AND created_at >= NOW() - INTERVAL '7 days';
 ```
 
+## Session Management
+
+QRY maintains a unified session across `qry q` and `qry chat`. The LLM indexes your codebase once and remembers context for subsequent queries.
+
+- Sessions persist for 7 days by default (configurable)
+- Same session is shared between one-shot and chat modes
+- Sessions auto-invalidate if you switch backends
+- Full prompt (role + rules) sent only on first query; follow-ups send just the query
+
+**Reset session to re-index codebase:**
+```bash
+qry init --force
+```
+
 ## Config
 
-Create `.qry.yaml` in your project:
+`qry init` creates `.qry.yaml` in your project:
 
 ```yaml
 backend: claude
-model: sonnet
 dialect: postgresql
-timeout: 30s
+timeout: 2m
+
+session:
+  ttl: 7d                    # Session lifetime
+
+prompt: |                    # Customizable prompt template
+  You are a SQL expert. Based on the codebase context (schemas, migrations, models), generate ONLY the SQL query.
+  
+  Rules:
+  - Output ONLY the SQL, no explanation
+  - Use actual table/column names from the codebase
+  - Use {{dialect}} syntax
+  
+  Request: {{query}}
+
+defaults:
+  claude: haiku
+  gemini: gemini-2.0-flash
+  codex: gpt-4o-mini
+  cursor: gpt-4o-mini
 ```
+
+| Field | Description |
+|-------|-------------|
+| `backend` | LLM CLI to use (claude, gemini, codex, cursor) |
+| `dialect` | SQL syntax (postgresql, mysql, sqlite) |
+| `timeout` | Request timeout |
+| `session.ttl` | Session lifetime (e.g., `7d`, `24h`) |
+| `prompt` | Prompt template sent on first query (with `{{dialect}}` and `{{query}}` variables) |
 
 ## API Server
 
@@ -91,6 +130,17 @@ qry serve
 curl -X POST http://localhost:7133/query \
   -H "Content-Type: application/json" \
   -d '{"query": "get active users"}'
+```
+
+The server manages sessions automatically — no need to track session IDs.
+
+**Session endpoints:**
+```bash
+# View current session
+curl http://localhost:7133/session
+
+# Reset session (re-index)
+curl -X DELETE http://localhost:7133/session
 ```
 
 ## Supported Backends

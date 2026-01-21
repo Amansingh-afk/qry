@@ -36,7 +36,7 @@ curl -X POST http://localhost:7133/query \
 | backend | string | no | Override default backend |
 | model | string | no | Model to use |
 | dialect | string | no | SQL dialect (postgresql, mysql, sqlite) |
-| session_id | string | no | Session ID for multi-turn conversations |
+| session_id | string | no | Override server-managed session |
 
 **Response**
 
@@ -58,13 +58,60 @@ curl -X POST http://localhost:7133/query \
 | model | string | Model used |
 | dialect | string | SQL dialect |
 | warning | string | Safety warning (if any) |
-| session_id | string | Session ID for follow-up queries (claude backend only) |
+| session_id | string | Session ID (managed by server) |
 
 **Error Response**
 
 ```json
 {
   "error": "claude not installed"
+}
+```
+
+### GET /session
+
+Get current session info.
+
+**Request**
+
+```bash
+curl http://localhost:7133/session
+```
+
+**Response**
+
+```json
+{
+  "backend": "claude",
+  "session_id": "abc123-def456",
+  "created_at": "2026-01-15T10:30:00Z",
+  "age": "6d2h30m"
+}
+```
+
+**Error Response (no session)**
+
+```json
+{
+  "error": "no session found"
+}
+```
+
+### DELETE /session
+
+Delete current session (forces re-index on next query).
+
+**Request**
+
+```bash
+curl -X DELETE http://localhost:7133/session
+```
+
+**Response**
+
+```json
+{
+  "status": "deleted"
 }
 ```
 
@@ -84,6 +131,30 @@ curl http://localhost:7133/health
 {
   "status": "ok"
 }
+```
+
+## Session Management
+
+The server manages sessions automatically. You don't need to track session IDs.
+
+**How it works:**
+1. First query → Full prompt sent (role + rules), LLM indexes codebase, server stores session
+2. Subsequent queries → Only the query is sent, LLM already has context
+3. Session expires after TTL (default: 7 days) or when backend changes
+
+**Session lifecycle:**
+- Sessions persist across server restarts (stored in `.qry/session`)
+- Sessions auto-invalidate if you switch backends
+- Sessions auto-expire after configured TTL
+- Full prompt template is only sent on first query (token efficient)
+
+**Force re-index:**
+```bash
+# Via API
+curl -X DELETE http://localhost:7133/session
+
+# Via CLI
+qry init --force
 ```
 
 ## Examples
@@ -111,13 +182,7 @@ curl -s -X POST http://localhost:7133/query \
 
 ## Multi-Turn Conversations
 
-The API supports multi-turn conversations where the LLM maintains context across queries. This is useful for refining queries or asking follow-up questions.
-
-**How it works:**
-1. Send your first query (no session_id)
-2. Response includes a `session_id`
-3. Include that `session_id` in follow-up requests
-4. The LLM remembers previous context
+The server maintains context across queries automatically.
 
 **First query:**
 ```bash
@@ -135,11 +200,11 @@ Response:
 }
 ```
 
-**Follow-up query (with session_id):**
+**Follow-up query (no session_id needed):**
 ```bash
 curl -s -X POST http://localhost:7133/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "filter by active ones", "session_id": "abc123-def456"}'
+  -d '{"query": "filter by active ones"}'
 ```
 
 Response:
@@ -152,34 +217,30 @@ Response:
 ```
 
 **Notes:**
-- Session support is currently available for the `claude` backend only
-- Other backends will return an empty `session_id`
-- Sessions persist codebase context, making follow-up queries faster and more accurate
-- To start a fresh conversation, omit `session_id`
+- Server manages sessions — clients don't need to track session IDs
+- You can still pass `session_id` to override the server-managed session
+- Sessions persist codebase context, making queries faster and more accurate
 
 **Example integration (Python):**
 ```python
 import requests
 
-session_id = None
+BASE = "http://localhost:7133"
 
 def ask_qry(question):
-    global session_id
-    resp = requests.post("http://localhost:7133/query", json={
-        "query": question,
-        "session_id": session_id
-    })
-    data = resp.json()
-    session_id = data.get("session_id")
-    return data["sql"]
+    resp = requests.post(f"{BASE}/query", json={"query": question})
+    return resp.json()["sql"]
 
-# First query
+# First query (server creates session, indexes codebase)
 print(ask_qry("get all users"))
 # SELECT * FROM users;
 
-# Follow-up (LLM remembers context)
+# Follow-up (server reuses session, LLM has context)
 print(ask_qry("now filter by active"))
 # SELECT * FROM users WHERE active = true;
+
+# Reset session if needed
+requests.delete(f"{BASE}/session")
 ```
 
 ## Safety Warnings

@@ -38,15 +38,42 @@ cd your-project
 qry init
 ```
 
+This creates:
+- `.qry.yaml` — configuration file
+- `.qry/` — session storage (gitignored automatically)
+
+**Reset and re-index codebase:**
+```bash
+qry init --force
+```
+
 ## 4. Configure
 
 Edit `.qry.yaml`:
 
 ```yaml
 backend: claude
-model: sonnet
 dialect: postgresql
-timeout: 30s
+timeout: 2m
+
+session:
+  ttl: 7d                    # Session lifetime
+
+prompt: |                    # Customizable prompt
+  You are a SQL expert. Based on the codebase context (schemas, migrations, models), generate ONLY the SQL query.
+  
+  Rules:
+  - Output ONLY the SQL, no explanation
+  - Use actual table/column names from the codebase
+  - Use {{dialect}} syntax
+  
+  Request: {{query}}
+
+defaults:
+  claude: haiku
+  gemini: gemini-2.0-flash
+  codex: gpt-4o-mini
+  cursor: gpt-4o-mini
 ```
 
 | Field | Values | Description |
@@ -55,6 +82,8 @@ timeout: 30s
 | model | (depends on backend) | Model to use |
 | dialect | postgresql, mysql, sqlite | SQL syntax |
 | timeout | 30s, 1m, 2m | Request timeout |
+| session.ttl | 7d, 24h, 168h | Session lifetime before re-index |
+| prompt | template string | Prompt sent on first query (with `{{dialect}}` and `{{query}}`) |
 
 ## 5. Usage
 
@@ -67,8 +96,29 @@ qry q "find users" -m opus
 
 **Interactive session:**
 ```bash
-qry chat                # New session
-qry chat --continue     # Resume last
+qry chat
+```
+
+Both modes share the same session — the LLM indexes your codebase once and remembers context.
+
+## Session Management
+
+QRY maintains a unified session that:
+- Persists across `qry q` and `qry chat` commands
+- Auto-expires after the configured TTL (default: 7 days)
+- Auto-invalidates if you switch backends
+- Sends full prompt only on first query; follow-ups are minimal (just the query)
+
+**View session info (API):**
+```bash
+curl http://localhost:7133/session
+```
+
+**Reset session:**
+```bash
+qry init --force
+# or via API
+curl -X DELETE http://localhost:7133/session
 ```
 
 ## API Server
@@ -77,6 +127,8 @@ qry chat --continue     # Resume last
 qry serve              # Port 7133
 qry serve -p 8080      # Custom port
 ```
+
+The server manages sessions automatically — clients don't need to track session IDs.
 
 ## Troubleshooting
 
@@ -94,4 +146,9 @@ qry init
 ```bash
 cd your-project
 qry serve
+```
+
+**Stale context / schema changed**
+```bash
+qry init --force
 ```
