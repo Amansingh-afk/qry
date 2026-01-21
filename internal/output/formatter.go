@@ -11,22 +11,15 @@ import (
 )
 
 var (
-	primary   = lipgloss.Color("#00D9FF")
-	success   = lipgloss.Color("#5AF78E")
-	muted     = lipgloss.Color("#636363")
+	success = lipgloss.Color("#5AF78E")
+	muted   = lipgloss.Color("#636363")
 
 	sqlKeyword = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF6AC1")).
 			Bold(true)
 
-	sqlNormal = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F1F1F0"))
-
 	metaStyle = lipgloss.NewStyle().
 			Foreground(muted)
-
-	borderStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#3E3E4E"))
 
 	successDot = lipgloss.NewStyle().
 			Foreground(success).
@@ -49,7 +42,7 @@ func JSON(w io.Writer, sql, backend string, elapsed time.Duration) {
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	enc.Encode(out)
+	_ = enc.Encode(out)
 }
 
 func Pretty(w io.Writer, sql, backend string, elapsed time.Duration) {

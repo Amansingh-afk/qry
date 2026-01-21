@@ -47,7 +47,7 @@ func Start(port int, workDir string) error {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"workdir": serverWorkDir,
 	})
@@ -55,7 +55,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func handleBackends(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string][]string{"backends": backend.List()})
+	_ = json.NewEncoder(w).Encode(map[string][]string{"backends": backend.List()})
 }
 
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -64,13 +64,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req QueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
 
 	if req.Prompt == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "prompt is required"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "prompt is required"})
 		return
 	}
 
@@ -82,13 +82,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	b, err := backend.Get(backendName)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	if !b.Available() {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("%s is not available", backendName)})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("%s is not available", backendName)})
 		return
 	}
 
@@ -102,7 +102,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -117,5 +117,5 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Warning: warning,
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }

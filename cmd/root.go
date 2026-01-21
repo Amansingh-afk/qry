@@ -22,7 +22,7 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 		runQuery(args[0])
@@ -61,7 +61,7 @@ func initConfig() {
 	viper.SetDefault("backend", "claude")
 	viper.SetDefault("dialect", "postgres")
 
-	viper.ReadInConfig()
+	_ = viper.ReadInConfig()
 }
 
 func getBackend() string {
