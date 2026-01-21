@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/amansingh-afk/qry/internal/backend"
+	"github.com/amansingh-afk/qry/internal/session"
 	"github.com/amansingh-afk/qry/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -58,6 +59,7 @@ func loadConfig() {
 	viper.SetDefault("backend", "claude")
 	viper.SetDefault("dialect", "postgresql")
 	viper.SetDefault("timeout", "2m")
+	viper.SetDefault("session.ttl", "7d")
 	viper.SetDefault("defaults.claude", "haiku")
 	viper.SetDefault("defaults.gemini", "gemini-2.0-flash")
 	viper.SetDefault("defaults.codex", "gpt-4o-mini")
@@ -127,4 +129,45 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(ui.Version())
 	},
+}
+
+// getSessionTTL parses the session TTL from config
+// Supports formats like "7d", "24h", "168h"
+func getSessionTTL() time.Duration {
+	ttlStr := viper.GetString("session.ttl")
+	if ttlStr == "" {
+		return 7 * 24 * time.Hour // Default 7 days
+	}
+
+	// Handle "Xd" format (days)
+	if len(ttlStr) > 1 && ttlStr[len(ttlStr)-1] == 'd' {
+		var days int
+		if _, err := fmt.Sscanf(ttlStr, "%dd", &days); err == nil {
+			return time.Duration(days) * 24 * time.Hour
+		}
+	}
+
+	// Try standard duration format
+	if d, err := time.ParseDuration(ttlStr); err == nil {
+		return d
+	}
+
+	return 7 * 24 * time.Hour // Fallback
+}
+
+// getSession returns the current session ID if valid, empty string otherwise
+func getSession(backendName string) string {
+	s, err := session.GetOrCreate(workDir, backendName, getSessionTTL())
+	if err != nil || s == nil {
+		return ""
+	}
+	return s.SessionID
+}
+
+// saveSession persists the session ID for future use
+func saveSession(backendName, sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	_ = session.Update(workDir, backendName, sessionID)
 }

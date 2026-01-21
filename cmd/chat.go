@@ -31,6 +31,25 @@ func init() {
 	rootCmd.AddCommand(chatCmd)
 }
 
+// inputResult holds the result of reading a line from stdin
+type inputResult struct {
+	line string
+	err  error
+}
+
+// readLine reads a line from stdin in a goroutine, allowing for interruption
+func readLine(scanner *bufio.Scanner) <-chan inputResult {
+	ch := make(chan inputResult, 1)
+	go func() {
+		if scanner.Scan() {
+			ch <- inputResult{line: scanner.Text()}
+		} else {
+			ch <- inputResult{err: scanner.Err()}
+		}
+	}()
+	return ch
+}
+
 func runChat(cmd *cobra.Command, args []string) {
 	b, err := getBackend()
 	if err != nil {
@@ -41,65 +60,92 @@ func runChat(cmd *cobra.Command, args []string) {
 	model := getModel(b.Name())
 	dialect := getDialect()
 
-	ui.ChatStarting(b.Name(), model)
+	ui.ChatStarting(b.Name(), model, workDir)
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Handle Ctrl+C
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		<-sigCh
+		fmt.Println()
+		cancel()
+		os.Exit(0)
+	}()
 
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var sessionID string // Track session for multi-turn conversation
+	// Get existing session or empty string for new session
+	sessionID := getSession(b.Name())
 
 	for {
 		fmt.Print(ui.Prompt())
 
-		if !scanner.Scan() {
-			break
-		}
-
-		input := strings.TrimSpace(scanner.Text())
-		if input == "" {
-			continue
-		}
-
-		if input == "exit" || input == "quit" {
-			break
-		}
-
-		queryCtx, queryCancel := context.WithTimeout(ctx, getTimeout())
-
-		opts := backend.Options{
-			Model:     model,
-			Dialect:   dialect,
-			SessionID: sessionID, // Resume session if available
-		}
-
-		sqlPrompt := prompt.BuildSQL(input, dialect)
-		result, err := b.Query(queryCtx, sqlPrompt, workDir, opts)
-
-		queryCancel()
-
-		if err != nil {
-			if ctx.Err() != nil {
-				fmt.Println()
-				break
+		// Read input with ability to interrupt
+		select {
+		case <-ctx.Done():
+			return
+		case inputRes := <-readLine(scanner):
+			if inputRes.err != nil {
+				return
 			}
-			ui.Error(err.Error())
-			continue
+
+			input := strings.TrimSpace(inputRes.line)
+			if input == "" {
+				continue
+			}
+
+			if input == "exit" || input == "quit" {
+				return
+			}
+
+			queryCtx, queryCancel := context.WithTimeout(ctx, getTimeout())
+
+			opts := backend.Options{
+				Model:     model,
+				Dialect:   dialect,
+				SessionID: sessionID, // Resume session if available
+			}
+
+			// Use full prompt for new sessions, minimal prompt for existing sessions
+			var sqlPrompt string
+			if sessionID == "" {
+				sqlPrompt = prompt.BuildSQL(input, dialect)
+			} else {
+				sqlPrompt = prompt.BuildFollowUp(input)
+			}
+
+			// Show loading spinner
+			stopSpinner := ui.Spinner()
+			queryRes, err := b.Query(queryCtx, sqlPrompt, workDir, opts)
+			stopSpinner()
+
+			queryCancel()
+
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				ui.Error(err.Error())
+				continue
+			}
+
+			// Store session ID for next turn and persist
+			if queryRes.SessionID != "" {
+				sessionID = queryRes.SessionID
+				saveSession(b.Name(), sessionID)
+			}
+
+			sql := prompt.ExtractSQL(queryRes.Response)
+
+			if warning := guardrails.Check(sql); warning != "" {
+				ui.Warning(warning)
+			}
+
+			output.Pretty(os.Stdout, sql, b.Name(), model)
+			fmt.Println()
 		}
-
-		// Store session ID for next turn
-		if result.SessionID != "" {
-			sessionID = result.SessionID
-		}
-
-		sql := prompt.ExtractSQL(result.Response)
-
-		if warning := guardrails.Check(sql); warning != "" {
-			ui.Warning(warning)
-		}
-
-		output.Pretty(os.Stdout, sql, b.Name(), model)
-		fmt.Println()
 	}
 }

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -112,6 +113,31 @@ func Thinking(backend string) {
 	fmt.Print(dimStyle.Render(fmt.Sprintf("● %s ", backend)))
 }
 
+// Spinner shows an animated loading spinner and returns a stop function
+func Spinner() func() {
+	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	done := make(chan struct{})
+
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				fmt.Print(dimStyle.Render(fmt.Sprintf("\r  %s thinking...", frames[i%len(frames)])))
+				i++
+				time.Sleep(80 * time.Millisecond)
+			}
+		}
+	}()
+
+	return func() {
+		close(done)
+		fmt.Print("\r\033[K") // Clear the line
+	}
+}
+
 func ClearLine() {
 	fmt.Print("\r\033[K")
 }
@@ -123,17 +149,28 @@ func ServerStarting(port int, dir string) {
 	fmt.Println()
 }
 
-func ChatStarting(backend, model string) {
+func ChatStarting(backend, model, workDir string) {
 	fmt.Println()
-	info := infoStyle.Render("QRY Chat")
+
+	// Mini ASCII QRY
+	q := cyanStyle.Render("█▀█")
+	r := pinkStyle.Render("█▀█")
+	y := purpleStyle.Render("█ █")
+
+	q2 := cyanStyle.Render("▀▀█")
+	r2 := pinkStyle.Render("█▀▄")
+	y2 := purpleStyle.Render("▀█▀")
+
+	fmt.Printf("  %s %s %s\n", q, r, y)
+	fmt.Printf("  %s %s %s  %s\n", q2, r2, y2, dimStyle.Render("v"+version))
+
 	backendInfo := backend
 	if model != "" {
 		backendInfo += "/" + model
-	} else {
-		backendInfo += " (default)"
 	}
-	fmt.Printf("  %s %s\n", info, dimStyle.Render(backendInfo))
-	fmt.Println(dimStyle.Render("  Type queries. 'exit' or Ctrl+C to quit."))
+
+	fmt.Println()
+	fmt.Printf("  %s  %s\n", dimStyle.Render(backendInfo), dimStyle.Render(workDir))
 	fmt.Println()
 }
 

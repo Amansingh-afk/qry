@@ -34,8 +34,24 @@ func init() {
 }
 
 func runQuery(query string) {
+	b, err := getBackend()
+	if err != nil {
+		ui.Error(err.Error())
+		os.Exit(1)
+	}
+
 	dialect := getDialect()
-	sqlPrompt := prompt.BuildSQL(query, dialect)
+
+	// Get existing session or empty string for new session
+	sessionID := getSession(b.Name())
+
+	// Use full prompt for new sessions, minimal prompt for existing sessions
+	var sqlPrompt string
+	if sessionID == "" {
+		sqlPrompt = prompt.BuildSQL(query, dialect)
+	} else {
+		sqlPrompt = prompt.BuildFollowUp(query)
+	}
 
 	if dryRunFlag {
 		ui.Info("Prompt:")
@@ -43,17 +59,12 @@ func runQuery(query string) {
 		return
 	}
 
-	b, err := getBackend()
-	if err != nil {
-		ui.Error(err.Error())
-		os.Exit(1)
-	}
-
 	model := getModel(b.Name())
 
 	opts := backend.Options{
-		Model:   model,
-		Dialect: dialect,
+		Model:     model,
+		Dialect:   dialect,
+		SessionID: sessionID,
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -72,6 +83,9 @@ func runQuery(query string) {
 		ui.Error(err.Error())
 		os.Exit(1)
 	}
+
+	// Save session for future queries
+	saveSession(b.Name(), result.SessionID)
 
 	sql := prompt.ExtractSQL(result.Response)
 
