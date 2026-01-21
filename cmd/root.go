@@ -26,6 +26,7 @@ var rootCmd = &cobra.Command{
 	Use:   "qry",
 	Short: "Ask. Get SQL.",
 	Long:  ui.Banner(),
+	Run:   runChat, // Default: interactive chat
 }
 
 func Execute() {

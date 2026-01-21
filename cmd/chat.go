@@ -17,18 +17,14 @@ import (
 )
 
 var chatCmd = &cobra.Command{
-	Use:   "chat",
-	Short: "Start interactive SQL chat session",
-	Long: `Start an interactive chat session for SQL generation.
-Type your questions, get SQL. Ctrl+C to exit.`,
-	Example: `  qry chat
-  qry chat -m sonnet
-  qry chat -d postgresql`,
-	Run: runChat,
+	Use:    "chat",
+	Short:  "Start interactive SQL chat session",
+	Hidden: true, // Deprecated: use `qry` directly
+	Run:    runChat,
 }
 
 func init() {
-	rootCmd.AddCommand(chatCmd)
+	rootCmd.AddCommand(chatCmd) // Keep for backward compatibility
 }
 
 // inputResult holds the result of reading a line from stdin

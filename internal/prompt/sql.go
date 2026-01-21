@@ -12,7 +12,7 @@ const defaultPromptTemplate = `You are a SQL expert. Based on the codebase conte
 Rules:
 - Output ONLY the SQL, no explanation
 - Use actual table/column names from the codebase
-- Use {{dialect}} syntax
+- Use {{dialect}}{{version}} syntax
 
 Request: {{query}}`
 
@@ -25,10 +25,18 @@ func BuildSQL(query string, dialect string) string {
 		template = defaultPromptTemplate
 	}
 
+	// Get db version from config
+	dbVersion := viper.GetString("db_version")
+	versionStr := ""
+	if dbVersion != "" {
+		versionStr = " " + dbVersion
+	}
+
 	// Replace template variables
 	result := template
 	result = strings.ReplaceAll(result, "{{query}}", query)
 	result = strings.ReplaceAll(result, "{{dialect}}", dialect)
+	result = strings.ReplaceAll(result, "{{version}}", versionStr)
 
 	return result
 }

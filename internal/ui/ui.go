@@ -177,3 +177,46 @@ func ChatStarting(backend, model, workDir string) {
 func Prompt() string {
 	return pinkStyle.Render("> ")
 }
+
+// Step shows a step in progress with arrow
+func Step(format string, args ...interface{}) {
+	fmt.Printf("  %s %s\n", cyanStyle.Render("→"), fmt.Sprintf(format, args...))
+}
+
+// StepDone shows a completed step with checkmark
+func StepDone(format string, args ...interface{}) {
+	fmt.Printf("    %s\n", okStyle.Render(fmt.Sprintf(format, args...)))
+}
+
+// StepItem shows an indented item under a step
+func StepItem(format string, args ...interface{}) {
+	fmt.Printf("    %s\n", dimStyle.Render(fmt.Sprintf(format, args...)))
+}
+
+// StepWarn shows a warning item under a step
+func StepWarn(format string, args ...interface{}) {
+	fmt.Printf("    %s\n", warnStyle.Render(fmt.Sprintf(format, args...)))
+}
+
+// Header shows a styled header
+func Header(text string) {
+	q := cyanStyle.Render("Q")
+	r := pinkStyle.Render("R")
+	y := purpleStyle.Render("Y")
+	fmt.Printf("\n  %s%s%s %s\n\n", q, r, y, dimStyle.Render(text))
+}
+
+// Done shows final success message
+func Done(format string, args ...interface{}) {
+	fmt.Printf("\n  %s %s\n\n", okStyle.Render("✓"), fmt.Sprintf(format, args...))
+}
+
+// Hint shows a hint/suggestion
+func Hint(format string, args ...interface{}) {
+	fmt.Printf("  %s\n", dimStyle.Render(fmt.Sprintf(format, args...)))
+}
+
+// Pause adds a small delay for premium feel
+func Pause() {
+	time.Sleep(150 * time.Millisecond)
+}
