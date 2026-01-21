@@ -54,6 +54,7 @@ Edit `.qry.yaml`:
 ```yaml
 backend: claude
 dialect: postgresql
+db_version: "16"             # Optional: PostgreSQL 16, MySQL 8.0, etc.
 timeout: 2m
 
 session:
@@ -65,7 +66,7 @@ prompt: |                    # Customizable prompt
   Rules:
   - Output ONLY the SQL, no explanation
   - Use actual table/column names from the codebase
-  - Use {{dialect}} syntax
+  - Use {{dialect}}{{version}} syntax
   
   Request: {{query}}
 
@@ -81,22 +82,24 @@ defaults:
 | backend | claude, gemini, codex, cursor | LLM CLI to use |
 | model | (depends on backend) | Model to use |
 | dialect | postgresql, mysql, sqlite | SQL syntax |
+| db_version | 16, 8.0, 3, etc. | Database version for accurate syntax |
 | timeout | 30s, 1m, 2m | Request timeout |
 | session.ttl | 7d, 24h, 168h | Session lifetime before re-index |
-| prompt | template string | Prompt sent on first query (with `{{dialect}}` and `{{query}}`) |
+| prompt | template string | Prompt with `{{dialect}}`, `{{version}}`, `{{query}}` |
 
 ## 5. Usage
 
-**One-shot queries:**
+**Interactive mode (default):**
+```bash
+qry
+```
+
+**One-shot queries (for scripting):**
 ```bash
 qry q "get active users"
 qry q "count by month" --json
 qry q "find users" -m opus
-```
-
-**Interactive session:**
-```bash
-qry chat
+qry q "get users" | pbcopy
 ```
 
 Both modes share the same session — the LLM indexes your codebase once and remembers context.
@@ -104,7 +107,7 @@ Both modes share the same session — the LLM indexes your codebase once and rem
 ## Session Management
 
 QRY maintains a unified session that:
-- Persists across `qry q` and `qry chat` commands
+- Persists across `qry` and `qry q` commands
 - Auto-expires after the configured TTL (default: 7 days)
 - Auto-invalidates if you switch backends
 - Sends full prompt only on first query; follow-ups are minimal (just the query)

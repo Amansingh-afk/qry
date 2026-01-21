@@ -5,11 +5,15 @@
 Natural language to SQL using your existing LLM CLI.
 
 ```bash
-qry q "get users who signed up last week"
+qry
 ```
 
-```sql
+```
+> get users who signed up last week
 SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days';
+
+> filter by active only
+SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days' AND status = 'active';
 ```
 
 ## Install
@@ -35,34 +39,25 @@ curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/unin
 ```bash
 cd your-project
 qry init
-qry q "find inactive users"
+qry
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `qry q "query"` | One-shot SQL generation |
-| `qry chat` | Interactive session |
+| `qry` | Interactive chat (default) |
+| `qry q "query"` | One-shot query (for scripting) |
 | `qry init` | Setup config |
 | `qry init --force` | Reset session (re-index codebase) |
 | `qry serve` | Start API server |
 
-## One-shot Mode
-
-```bash
-qry q "count orders by month"
-qry q "get top 10 products" --json
-qry q "find users" -m sonnet -d postgresql
-qry q "complex query" --dry-run
-```
-
 ## Interactive Mode
 
-Start a chat session:
+Just run `qry`:
 
 ```bash
-qry chat
+qry
 ```
 
 Follow-up questions work naturally:
@@ -75,9 +70,20 @@ SELECT * FROM users WHERE status = 'active';
 SELECT * FROM users WHERE status = 'active' AND created_at >= NOW() - INTERVAL '7 days';
 ```
 
+## One-shot Mode
+
+For scripting and piping:
+
+```bash
+qry q "count orders by month"
+qry q "get top 10 products" --json
+qry q "find users" -m sonnet -d postgresql
+qry q "get users" | pbcopy
+```
+
 ## Session Management
 
-QRY maintains a unified session across `qry q` and `qry chat`. The LLM indexes your codebase once and remembers context for subsequent queries.
+QRY maintains a unified session. The LLM indexes your codebase once and remembers context for subsequent queries.
 
 - Sessions persist for 7 days by default (configurable)
 - Same session is shared between one-shot and chat modes
@@ -96,6 +102,7 @@ qry init --force
 ```yaml
 backend: claude
 dialect: postgresql
+db_version: "16"             # Optional: PostgreSQL 16, MySQL 8.0, etc.
 timeout: 2m
 
 session:
@@ -107,7 +114,7 @@ prompt: |                    # Customizable prompt template
   Rules:
   - Output ONLY the SQL, no explanation
   - Use actual table/column names from the codebase
-  - Use {{dialect}} syntax
+  - Use {{dialect}}{{version}} syntax
   
   Request: {{query}}
 
@@ -122,9 +129,10 @@ defaults:
 |-------|-------------|
 | `backend` | LLM CLI to use (claude, gemini, codex, cursor) |
 | `dialect` | SQL syntax (postgresql, mysql, sqlite) |
+| `db_version` | Database version for accurate syntax (e.g., `16`, `8.0`) |
 | `timeout` | Request timeout |
 | `session.ttl` | Session lifetime (e.g., `7d`, `24h`) |
-| `prompt` | Prompt template sent on first query (with `{{dialect}}` and `{{query}}` variables) |
+| `prompt` | Prompt template with `{{dialect}}`, `{{version}}`, `{{query}}` variables |
 
 ## API Server
 
