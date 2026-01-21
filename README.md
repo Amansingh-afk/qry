@@ -191,3 +191,13 @@ Use `-m` to override: `qry q "query" -m sonnet`
 ## License
 
 MIT
+
+
+## Demo setup
+```bash
+nix-shell -p go --run "go build -o qry
+
+nix-shell -p vhs
+
+vhs docs/demo.tape
+```
