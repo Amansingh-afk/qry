@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/amansingh-afk/qry/internal/backend"
@@ -12,13 +14,14 @@ import (
 )
 
 type Config struct {
-	Backend  string            `yaml:"backend"`
-	Model    string            `yaml:"model,omitempty"`
-	Dialect  string            `yaml:"dialect,omitempty"`
-	Timeout  string            `yaml:"timeout,omitempty"`
-	Defaults map[string]string `yaml:"defaults,omitempty"`
-	Session  SessionConfig     `yaml:"session,omitempty"`
-	Prompt   string            `yaml:"prompt,omitempty"`
+	Backend   string            `yaml:"backend"`
+	Model     string            `yaml:"model,omitempty"`
+	Dialect   string            `yaml:"dialect,omitempty"`
+	DBVersion string            `yaml:"db_version,omitempty"`
+	Timeout   string            `yaml:"timeout,omitempty"`
+	Defaults  map[string]string `yaml:"defaults,omitempty"`
+	Session   SessionConfig     `yaml:"session,omitempty"`
+	Prompt    string            `yaml:"prompt,omitempty"`
 }
 
 type SessionConfig struct {
@@ -37,7 +40,7 @@ const defaultPrompt = `You are a SQL expert. Based on the codebase context (sche
 Rules:
 - Output ONLY the SQL, no explanation
 - Use actual table/column names from the codebase
-- Use {{dialect}} syntax
+- Use {{dialect}}{{version}} syntax
 
 Request: {{query}}`
 
@@ -60,21 +63,35 @@ func init() {
 func runInit(cmd *cobra.Command, args []string) {
 	workDir, _ := os.Getwd()
 
+	ui.Header("Setup")
+
+	// Step 1: Detect repository
+	ui.Step("Detecting repository...")
+	ui.Pause()
+	repoName := detectRepoName(workDir)
+	ui.StepDone(repoName)
+
 	// Handle --force: clear existing session
 	if forceInit {
+		ui.Pause()
+		ui.Step("Clearing session...")
+		ui.Pause()
 		if err := session.Delete(workDir); err != nil {
-			ui.Error("Failed to clear session: %s", err)
+			ui.StepWarn("No existing session")
 		} else {
-			ui.Success("Session cleared")
+			ui.StepDone("Session cleared")
 		}
 	}
 
-	ui.Info("Checking backends...")
+	// Step 2: Check backends
+	ui.Pause()
+	ui.Step("Checking backends...")
+	ui.Pause()
 
 	available := backend.Available()
 
 	if len(available) == 0 {
-		ui.Error("No backends found")
+		ui.StepWarn("No backends found")
 		ui.Print("")
 		ui.Print("  Install one of:")
 		for _, name := range backend.List() {
@@ -85,12 +102,37 @@ func runInit(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	ui.Print("")
 	for _, b := range available {
-		ui.Success("%s", b.Name())
+		ui.StepDone(b.Name())
 	}
 
 	selected := available[0].Name()
+
+	// Step 3: Create config
+	ui.Pause()
+	configPath := ".qry.yaml"
+	if _, err := os.Stat(configPath); err == nil {
+		if !forceInit {
+			ui.Step("Config exists")
+			ui.StepItem(".qry.yaml already configured")
+			ui.Done("Ready")
+			ui.Hint("Use --force to reset session")
+			ui.Hint("Run: qry")
+			ui.Print("")
+			return
+		}
+		// With --force, we cleared session but keep existing config
+		ui.Step("Config exists")
+		ui.StepItem("Keeping existing .qry.yaml")
+		ui.Done("Session reset")
+		ui.Hint("Codebase will be re-indexed on next query")
+		ui.Hint("Run: qry")
+		ui.Print("")
+		return
+	}
+
+	ui.Step("Creating config...")
+	ui.Pause()
 
 	// Create .qry/ directory for session storage
 	qryDir := session.DirPath(workDir)
@@ -99,30 +141,12 @@ func runInit(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Add .qry/ to .gitignore if not already present
-	addToGitignore(workDir)
-
-	configPath := ".qry.yaml"
-	if _, err := os.Stat(configPath); err == nil {
-		if !forceInit {
-			ui.Print("")
-			ui.Info(".qry.yaml already exists (use --force to reset session)")
-			return
-		}
-		// With --force, we cleared session but keep existing config
-		ui.Print("")
-		ui.Info(".qry.yaml exists, session reset")
-		ui.Print("")
-		ui.Print("  Codebase will be re-indexed on next query")
-		ui.Print("")
-		return
-	}
-
 	config := Config{
-		Backend:  selected,
-		Dialect:  "postgresql",
-		Timeout:  "2m",
-		Defaults: defaultModels,
+		Backend:   selected,
+		Dialect:   "postgresql",
+		DBVersion: "",
+		Timeout:   "2m",
+		Defaults:  defaultModels,
 		Session: SessionConfig{
 			TTL: "7d",
 		},
@@ -140,15 +164,44 @@ func runInit(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	ui.StepItem("Backend:  %s", selected)
+	ui.StepItem("Model:    %s", defaultModels[selected])
+	ui.StepItem("Dialect:  %s", config.Dialect)
+	ui.StepItem("Session:  %s TTL", config.Session.TTL)
+
+	// Step 4: Update .gitignore
+	ui.Pause()
+	ui.Step("Updating .gitignore...")
+	ui.Pause()
+	addToGitignore(workDir)
+	ui.StepDone("Added .qry/")
+
+	// Done
+	ui.Done("Ready")
+	ui.Hint("Run: qry")
 	ui.Print("")
-	ui.Success("Created .qry.yaml")
-	ui.Print("")
-	ui.Print("  Backend: %s", selected)
-	ui.Print("  Model:   %s (from defaults)", defaultModels[selected])
-	ui.Print("  Session: %s TTL", config.Session.TTL)
-	ui.Print("")
-	ui.Print("  Try: qry q \"get active users\"")
-	ui.Print("")
+}
+
+// detectRepoName returns the repository or directory name
+func detectRepoName(workDir string) string {
+	// Try to get git remote name
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	cmd.Dir = workDir
+	if out, err := cmd.Output(); err == nil {
+		url := strings.TrimSpace(string(out))
+		// Extract repo name from URL
+		// git@github.com:user/repo.git or https://github.com/user/repo.git
+		url = strings.TrimSuffix(url, ".git")
+		if idx := strings.LastIndex(url, "/"); idx != -1 {
+			return url[idx+1:]
+		}
+		if idx := strings.LastIndex(url, ":"); idx != -1 {
+			return url[idx+1:]
+		}
+	}
+
+	// Fall back to directory name
+	return filepath.Base(workDir)
 }
 
 // addToGitignore adds .qry/ to .gitignore if not already present
