@@ -16,17 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var chatCmd = &cobra.Command{
-	Use:    "chat",
-	Short:  "Start interactive SQL chat session",
-	Hidden: true, // Deprecated: use `qry` directly
-	Run:    runChat,
-}
-
-func init() {
-	rootCmd.AddCommand(chatCmd) // Keep for backward compatibility
-}
-
 // inputResult holds the result of reading a line from stdin
 type inputResult struct {
 	line string

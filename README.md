@@ -16,6 +16,17 @@ SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days';
 SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days' AND status = 'active';
 ```
 
+## How it works
+
+QRY wraps LLM CLIs (Claude Code, Gemini CLI, Codex, Cursor) that already understand your codebase. No custom indexing, no embeddings, no schema sync — it leverages their built-in context awareness.
+
+**Why this matters:**
+- New table? Just `git pull`. The CLI already sees it.
+- Schema change? No manual updates. It's already indexed.
+- Complex joins? The LLM knows your actual table relationships.
+
+Traditional NL2SQL tools require you to maintain schema definitions and regenerate embeddings. QRY doesn't — the underlying CLI handles all of that.
+
 ## Install
 
 ```bash
@@ -81,6 +92,12 @@ qry q "find users" -m sonnet -d postgresql
 qry q "get users" | pbcopy
 ```
 
+Or if you're feeling brave:
+
+```bash
+qry q "get users" | psql
+```
+
 ## Session Management
 
 QRY maintains a unified session. The LLM indexes your codebase once and remembers context for subsequent queries.
@@ -136,7 +153,10 @@ defaults:
 
 ## API Server
 
+Run from your project directory:
+
 ```bash
+cd your-project
 qry serve
 ```
 
@@ -146,7 +166,9 @@ curl -X POST http://localhost:7133/query \
   -d '{"query": "get active users"}'
 ```
 
-The server manages sessions automatically — no need to track session IDs.
+The server is scoped to the directory it's started in. For multiple repos, run separate servers on different ports (`qry serve -p 7134`).
+
+Sessions are managed automatically — no need to track session IDs.
 
 **Session endpoints:**
 ```bash
