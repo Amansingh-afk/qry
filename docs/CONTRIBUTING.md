@@ -2,68 +2,78 @@
 
 ## Development Setup
 
-### Requirements
-
-- Go 1.22+
-- One LLM backend (Claude, Gemini, Codex, or Cursor)
-
-### Clone and Build
-
 ```bash
-git clone https://github.com/amansingh-afk/qry
+git clone https://github.com/amansingh-afk/qry.git
 cd qry
 go mod download
 go build -o qry .
-```
-
-### Using Nix (Optional)
-
-```bash
-nix develop
-go build
+./qry --help
 ```
 
 ## Project Structure
 
 ```
 qry/
-├── main.go                 # Entry point
 ├── cmd/
-│   ├── root.go            # CLI setup, flags
-│   ├── query.go           # Main query command
-│   ├── serve.go           # API server
-│   └── config.go          # Config management
+│   ├── root.go      # Main command, flags, config
+│   ├── init.go      # qry init
+│   ├── query.go     # qry "query"
+│   └── serve.go     # qry serve
 ├── internal/
-│   ├── backend/           # LLM backend wrappers
-│   ├── prompt/            # SQL prompt templates
-│   ├── guardrails/        # Safety checks
-│   ├── output/            # Formatting
-│   ├── ui/                # Terminal UI
-│   └── server/            # HTTP API
-└── docs/                  # Documentation
+│   ├── backend/     # LLM CLI integrations
+│   │   ├── backend.go   # Interface + registry
+│   │   ├── claude.go
+│   │   ├── gemini.go
+│   │   ├── codex.go
+│   │   └── cursor.go
+│   ├── guardrails/  # SQL safety checks
+│   ├── output/      # JSON + pretty output
+│   ├── prompt/      # Prompt building
+│   ├── server/      # HTTP server
+│   └── ui/          # Terminal colors/messages
+├── docs/
+├── scripts/
+└── main.go
 ```
 
 ## Adding a New Backend
 
-1. Create `internal/backend/newbackend.go`:
+1. Create `internal/backend/mybackend.go`:
 
 ```go
 package backend
 
-type NewBackend struct{}
+import (
+    "context"
+    "fmt"
+    "os/exec"
+    "strings"
+)
 
-func (n *NewBackend) Name() string { return "newbackend" }
+type MyBackend struct{}
 
-func (n *NewBackend) Available() bool {
-    _, err := exec.LookPath("newbackend-cli")
+func (m *MyBackend) Name() string {
+    return "mybackend"
+}
+
+func (m *MyBackend) InstallCmd() string {
+    return "npm i -g @example/mybackend-cli"
+}
+
+func (m *MyBackend) Available() bool {
+    _, err := exec.LookPath("mybackend")
     return err == nil
 }
 
-func (n *NewBackend) Query(ctx context.Context, prompt string, workDir string) (string, error) {
-    cmd := exec.CommandContext(ctx, "newbackend-cli", "-p", prompt)
+func (m *MyBackend) Query(ctx context.Context, prompt string, workDir string) (string, error) {
+    cmd := exec.CommandContext(ctx, "mybackend", "-p", prompt)
     cmd.Dir = workDir
+
     out, err := cmd.CombinedOutput()
-    return string(out), err
+    if err != nil {
+        return "", fmt.Errorf("mybackend: %w\n%s", err, string(out))
+    }
+    return strings.TrimSpace(string(out)), nil
 }
 ```
 
@@ -71,17 +81,25 @@ func (n *NewBackend) Query(ctx context.Context, prompt string, workDir string) (
 
 ```go
 var registry = map[string]Backend{
-    // ...
-    "newbackend": &NewBackend{},
+    "claude":    &Claude{},
+    "gemini":    &Gemini{},
+    "codex":     &Codex{},
+    "cursor":    &Cursor{},
+    "mybackend": &MyBackend{},  // Add here
+}
+
+func List() []string {
+    return []string{"claude", "gemini", "codex", "cursor", "mybackend"}
 }
 ```
 
-## Code Style
+## Linting
 
-- No unnecessary comments
-- Keep functions small
-- Use descriptive names
-- Run `gofmt` before committing
+```bash
+golangci-lint run
+```
+
+Fix all issues before submitting.
 
 ## Testing
 
@@ -89,22 +107,23 @@ var registry = map[string]Backend{
 go test ./...
 ```
 
-## Pull Requests
+## Releasing
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/my-feature`
-3. Make changes
-4. Test: `go build && ./qry "test query"`
-5. Commit: `git commit -m "Add feature"`
-6. Push: `git push origin feature/my-feature`
-7. Open PR
+Push a tag to trigger the release workflow:
 
-## Reporting Issues
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
 
-Include:
+GitHub Actions will:
+- Build binaries for all platforms
+- Create a GitHub Release
+- Upload binaries
 
-- QRY version (`qry version`)
-- Backend used
-- Command that failed
-- Error message
-- Working directory context
+## Code Style
+
+- Keep functions small and focused
+- Minimal comments (code should be self-explanatory)
+- Handle errors explicitly
+- Use `internal/ui` for all terminal output

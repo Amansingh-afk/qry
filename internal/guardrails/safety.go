@@ -5,34 +5,29 @@ import (
 	"strings"
 )
 
-var dangerousPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\bDROP\s+(TABLE|DATABASE|SCHEMA|INDEX)\b`),
-	regexp.MustCompile(`(?i)\bTRUNCATE\s+TABLE\b`),
-	regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+\w+\s*;?\s*$`),
-	regexp.MustCompile(`(?i)\bUPDATE\s+\w+\s+SET\s+.+\s*;?\s*$`),
-	regexp.MustCompile(`(?i)\bALTER\s+TABLE\s+.+\s+DROP\b`),
+var dangerous = []string{
+	"DROP TABLE",
+	"DROP DATABASE",
+	"TRUNCATE",
+	"DELETE FROM",
+	"ALTER TABLE",
+	"DROP INDEX",
 }
 
-func Check(sql string) string {
-	normalized := strings.TrimSpace(sql)
+var whereClause = regexp.MustCompile(`(?i)\bWHERE\b`)
 
-	for _, pattern := range dangerousPatterns {
-		if pattern.MatchString(normalized) {
-			return "⚠️  This query may be destructive. Review carefully before executing."
+func Check(sql string) string {
+	upper := strings.ToUpper(sql)
+
+	for _, d := range dangerous {
+		if strings.Contains(upper, d) {
+			return "Destructive operation: " + d
 		}
 	}
 
-	upper := strings.ToUpper(normalized)
-	if strings.Contains(upper, "DROP") ||
-		strings.Contains(upper, "TRUNCATE") ||
-		(strings.Contains(upper, "DELETE") && !strings.Contains(upper, "WHERE")) ||
-		(strings.Contains(upper, "UPDATE") && !strings.Contains(upper, "WHERE")) {
-		return "⚠️  This query may be destructive. Review carefully before executing."
+	if strings.Contains(upper, "UPDATE") && !whereClause.MatchString(sql) {
+		return "UPDATE without WHERE clause"
 	}
 
 	return ""
-}
-
-func IsSafe(sql string) bool {
-	return Check(sql) == ""
 }

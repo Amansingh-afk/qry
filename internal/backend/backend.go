@@ -5,30 +5,49 @@ import (
 	"fmt"
 )
 
+type Options struct {
+	Model     string
+	Dialect   string
+	SessionID string // For multi-turn conversations (claude only)
+}
+
+type Result struct {
+	Response  string
+	SessionID string // Returned for multi-turn conversations
+}
+
 type Backend interface {
 	Name() string
 	Available() bool
-	Query(ctx context.Context, prompt string, workDir string) (string, error)
+	InstallCmd() string
+	Query(ctx context.Context, prompt string, workDir string, opts Options) (Result, error)
 }
 
 var registry = map[string]Backend{
-	"cursor": &Cursor{},
 	"claude": &Claude{},
 	"gemini": &Gemini{},
 	"codex":  &Codex{},
+	"cursor": &Cursor{},
 }
 
 func Get(name string) (Backend, error) {
-	if b, ok := registry[name]; ok {
-		return b, nil
+	b, ok := registry[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown backend: %s", name)
 	}
-	return nil, fmt.Errorf("unknown backend: %s (available: cursor, claude, gemini, codex)", name)
+	return b, nil
 }
 
 func List() []string {
-	names := make([]string, 0, len(registry))
-	for name := range registry {
-		names = append(names, name)
+	return []string{"claude", "gemini", "codex", "cursor"}
+}
+
+func Available() []Backend {
+	var available []Backend
+	for _, name := range List() {
+		if b, _ := Get(name); b != nil && b.Available() {
+			available = append(available, b)
+		}
 	}
-	return names
+	return available
 }

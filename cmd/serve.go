@@ -10,16 +10,15 @@ var port int
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start QRY as an API server",
-	Long:  "Start QRY as an API server. Run from your project directory.",
+	Short: "Start API server",
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.ServerStarting(port)
-		if err := server.Start(port, getWorkDir()); err != nil {
+		ui.ServerStarting(port, workDir)
+		if err := server.Start(port, workDir); err != nil {
 			ui.Error(err.Error())
 		}
 	},
 }
 
 func init() {
-	serveCmd.Flags().IntVarP(&port, "port", "p", 7133, "port to listen on")
+	serveCmd.Flags().IntVarP(&port, "port", "p", 7133, "port")
 }

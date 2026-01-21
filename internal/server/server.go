@@ -14,63 +14,54 @@ import (
 )
 
 type QueryRequest struct {
-	Prompt  string `json:"prompt"`
-	Backend string `json:"backend,omitempty"`
+	Query     string `json:"query"`
+	Backend   string `json:"backend,omitempty"`
+	Model     string `json:"model,omitempty"`
+	Dialect   string `json:"dialect,omitempty"`
+	SessionID string `json:"session_id,omitempty"` // For multi-turn conversations
 }
 
 type QueryResponse struct {
-	SQL     string `json:"sql"`
-	Backend string `json:"backend"`
-	Elapsed int64  `json:"elapsed_ms"`
-	Safe    bool   `json:"safe"`
-	Warning string `json:"warning,omitempty"`
+	SQL       string `json:"sql"`
+	Backend   string `json:"backend"`
+	Model     string `json:"model,omitempty"`
+	Dialect   string `json:"dialect,omitempty"`
+	Warning   string `json:"warning,omitempty"`
+	SessionID string `json:"session_id,omitempty"` // For multi-turn conversations
 }
 
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-var serverWorkDir string
-
 func Start(port int, workDir string) error {
-	serverWorkDir = workDir
-
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", handleHealth)
-	mux.HandleFunc("POST /query", handleQuery)
-	mux.HandleFunc("GET /backends", handleBackends)
-
-	addr := fmt.Sprintf(":%d", port)
-	return http.ListenAndServe(addr, mux)
-}
-
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status":  "ok",
-		"workdir": serverWorkDir,
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
+
+	mux.HandleFunc("POST /query", func(w http.ResponseWriter, r *http.Request) {
+		handleQuery(w, r, workDir)
+	})
+
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
-func handleBackends(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string][]string{"backends": backend.List()})
-}
-
-func handleQuery(w http.ResponseWriter, r *http.Request) {
+func handleQuery(w http.ResponseWriter, r *http.Request, workDir string) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req QueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid JSON"})
 		return
 	}
 
-	if req.Prompt == "" {
+	if req.Query == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "prompt is required"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "query required"})
 		return
 	}
 
@@ -87,18 +78,36 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !b.Available() {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("%s is not available", backendName)})
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("%s not available", b.Name())})
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	// Get model: request > config model > config defaults
+	model := req.Model
+	if model == "" {
+		model = viper.GetString("model")
+	}
+	if model == "" {
+		model = viper.GetString("defaults." + backendName)
+	}
+
+	dialect := req.Dialect
+	if dialect == "" {
+		dialect = viper.GetString("dialect")
+	}
+
+	opts := backend.Options{
+		Model:     model,
+		Dialect:   dialect,
+		SessionID: req.SessionID,
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 
-	start := time.Now()
-	sqlPrompt := prompt.BuildSQL(req.Prompt)
-	result, err := b.Query(ctx, sqlPrompt, serverWorkDir)
-	elapsed := time.Since(start)
+	sqlPrompt := prompt.BuildSQL(req.Query, dialect)
+	result, err := b.Query(ctx, sqlPrompt, workDir, opts)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -106,16 +115,15 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := prompt.ExtractSQL(result)
+	sql := prompt.ExtractSQL(result.Response)
 	warning := guardrails.Check(sql)
 
-	resp := QueryResponse{
-		SQL:     sql,
-		Backend: backendName,
-		Elapsed: elapsed.Milliseconds(),
-		Safe:    warning == "",
-		Warning: warning,
-	}
-
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(QueryResponse{
+		SQL:       sql,
+		Backend:   b.Name(),
+		Model:     model,
+		Dialect:   dialect,
+		Warning:   warning,
+		SessionID: result.SessionID,
+	})
 }

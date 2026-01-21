@@ -1,161 +1,97 @@
 # Setup Guide
 
-## Prerequisites
+## 1. Install a Backend
 
-QRY requires at least one LLM CLI backend installed.
-
-### Install a Backend
-
-| Backend | Install Command |
-|---------|-----------------|
-| Claude | `npm i -g @anthropic-ai/claude-code` |
-| Gemini | `npm i -g @google/gemini-cli` |
-| Codex | `npm i -g @openai/codex` |
-| Cursor | `curl https://cursor.com/install -fsS \| bash` |
-
-## Install QRY
-
-### Option 1: Quick Install (Recommended)
+QRY needs at least one LLM CLI installed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/install.sh | sh
+# Claude (recommended)
+npm i -g @anthropic-ai/claude-code
+
+# Gemini
+npm i -g @google/gemini-cli
+
+# Codex
+npm i -g @openai/codex
+
+# Cursor
+curl -fsSL https://cursor.com/install | sh
 ```
 
-### Option 2: Homebrew
+## 2. Install QRY
 
 ```bash
-brew install amansingh/tap/qry
-```
+# Quick install
+curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/install.sh | bash
 
-### Option 3: Go Install
-
-```bash
+# With Go
 go install github.com/amansingh-afk/qry@latest
+
+# From releases
+# https://github.com/amansingh-afk/qry/releases
 ```
 
-### Option 4: Build from Source
-
-```bash
-git clone https://github.com/amansingh-afk/qry
-cd qry
-go build -o qry .
-sudo mv qry /usr/local/bin/
-```
-
-## Initialize Project
+## 3. Initialize
 
 ```bash
 cd your-project
 qry init
 ```
 
-This creates `.qry.yaml`:
+## 4. Configure
+
+Edit `.qry.yaml`:
 
 ```yaml
 backend: claude
-dialect: postgres
+model: sonnet
+dialect: postgresql
+timeout: 30s
 ```
 
-## Configuration
+| Field | Values | Description |
+|-------|--------|-------------|
+| backend | claude, gemini, codex, cursor | LLM CLI to use |
+| model | (depends on backend) | Model to use |
+| dialect | postgresql, mysql, sqlite | SQL syntax |
+| timeout | 30s, 1m, 2m | Request timeout |
 
-QRY uses a per-project `.qry.yaml` file in your project directory.
+## 5. Usage
 
-### Set Config
+**One-shot queries:**
+```bash
+qry q "get active users"
+qry q "count by month" --json
+qry q "find users" -m opus
+```
+
+**Interactive session:**
+```bash
+qry chat                # New session
+qry chat --continue     # Resume last
+```
+
+## API Server
 
 ```bash
-qry config set backend gemini
-qry config set dialect mysql
+qry serve              # Port 7133
+qry serve -p 8080      # Custom port
 ```
-
-### View Config
-
-```bash
-qry config list
-qry config get backend
-```
-
-### Environment Variables
-
-You can also use environment variables:
-
-```bash
-export QRY_BACKEND=gemini
-export QRY_DIALECT=mysql
-```
-
-## Verify Installation
-
-```bash
-qry version
-qry "get active users"
-```
-
-## Backend Authentication
-
-Each backend requires its own authentication:
-
-### Claude
-
-```bash
-claude auth
-```
-
-### Gemini
-
-```bash
-gemini auth
-```
-
-### Codex
-
-```bash
-export OPENAI_API_KEY=your-key
-```
-
-### Cursor
-
-Uses your existing Cursor IDE authentication.
-
-## Running as API Server
-
-Run from your project directory:
-
-```bash
-cd your-project
-qry serve
-```
-
-Default port is 7133. Change with `--port`:
-
-```bash
-qry serve --port 9000
-```
-
-The server will have context of the directory it was started from.
 
 ## Troubleshooting
 
-### "backend not found"
-
-Make sure the CLI is installed and in your PATH:
-
+**"X not installed"**
 ```bash
-which claude  # or gemini, codex, cursor
+npm i -g @anthropic-ai/claude-code
 ```
 
-### "command not found: qry"
-
-Add Go bin to PATH:
-
+**"No backends found"**
 ```bash
-export PATH=$PATH:$(go env GOPATH)/bin
+qry init
 ```
 
-### Wrong schema context
-
-Make sure you're running QRY from your project directory:
-
+**Server not finding schema**
 ```bash
-cd /path/to/your/project
-qry "get users"
+cd your-project
+qry serve
 ```

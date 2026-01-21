@@ -1,134 +1,110 @@
-<p align="center">
-  <br>
-  <b style="font-size: 48px;">QRY</b>
-  <br>
-  <b>Ask. Get SQL.</b>
-  <br>
-  <br>
-</p>
+# QRY
 
-<p align="center">
-  <a href="#install">Install</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#backends">Backends</a> •
-  <a href="docs/API.md">API</a> •
-  <a href="docs/CONTRIBUTING.md">Contributing</a>
-</p>
+**Ask. Get SQL.**
 
----
+Natural language to SQL using your existing LLM CLI.
 
-Generate SQL from natural language. QRY wraps AI CLI tools and runs them in your project directory for full codebase context.
+```bash
+qry q "get users who signed up last week"
+```
+
+```sql
+SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days';
+```
 
 ## Install
 
-### Quick Install
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/amansingh-afk/qry/main/scripts/install.sh | bash
 ```
 
-### Homebrew
-
-```bash
-brew install amansingh/tap/qry
-```
-
-### Go
+Or with Go:
 
 ```bash
 go install github.com/amansingh-afk/qry@latest
 ```
 
-## Usage
-
-```bash
-cd your-project
-qry "get active users from last week"
-```
-
-```sql
-SELECT * FROM users
-WHERE active = true
-  AND created_at >= CURRENT_DATE - INTERVAL '7 days'
-```
-
-### Initialize Project
+## Quick Start
 
 ```bash
 cd your-project
 qry init
+qry q "find inactive users"
 ```
 
-Creates `.qry.yaml` with default settings.
+## Commands
 
-### Choose Backend
+| Command | Description |
+|---------|-------------|
+| `qry q "query"` | One-shot SQL generation |
+| `qry chat` | Interactive session |
+| `qry init` | Setup config |
+| `qry serve` | Start API server |
+
+## One-shot Mode
 
 ```bash
-qry -b claude "get active users"
-qry -b gemini "get active users"
-qry -b codex "get active users"
-qry -b cursor "get active users"
+qry q "count orders by month"
+qry q "get top 10 products" --json
+qry q "find users" -m sonnet -d postgresql
+qry q "complex query" --dry-run
 ```
 
-### JSON Output
+## Interactive Mode
+
+Start a chat session with context persistence:
 
 ```bash
-qry --json "get active users"
+qry chat                    # New session
+qry chat --continue         # Resume last session
+qry chat -r <session-id>    # Resume specific session
 ```
 
-```json
-{
-  "sql": "SELECT * FROM users WHERE active = true",
-  "backend": "claude",
-  "elapsed_ms": 342,
-  "safe": true
-}
+Follow-up questions work naturally:
+
+```
+> get active users
+SELECT * FROM users WHERE status = 'active';
+
+> filter by last 7 days
+SELECT * FROM users WHERE status = 'active' AND created_at >= NOW() - INTERVAL '7 days';
 ```
 
-### API Server
+## Config
 
-Run from your project directory:
+Create `.qry.yaml` in your project:
+
+```yaml
+backend: claude
+model: sonnet
+dialect: postgresql
+timeout: 30s
+```
+
+## API Server
 
 ```bash
-cd your-project
 qry serve
 ```
 
 ```bash
 curl -X POST http://localhost:7133/query \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "get active users"}'
+  -d '{"query": "get active users"}'
 ```
 
-### Configuration
+## Supported Backends
 
-Config is per-project in `.qry.yaml`:
+| Backend | Default Model | Install |
+|---------|---------------|---------|
+| Claude | haiku | `npm i -g @anthropic-ai/claude-code` |
+| Gemini | gemini-2.0-flash | `npm i -g @google/gemini-cli` |
+| Codex | gpt-4o-mini | `npm i -g @openai/codex` |
+| Cursor | gpt-4o-mini | `curl -fsSL https://cursor.com/install \| sh` |
 
-```bash
-qry config set backend gemini
-qry config set dialect postgres
-qry config list
-```
+Use `-m` to override: `qry q "query" -m sonnet`
 
-## Backends
-
-QRY wraps existing AI CLI tools. Install at least one:
-
-| Backend | Install |
-|---------|---------|
-| Claude | `npm i -g @anthropic-ai/claude-code` |
-| Gemini | `npm i -g @google/gemini-cli` |
-| Codex | `npm i -g @openai/codex` |
-| Cursor | `curl https://cursor.com/install -fsS \| bash` |
-
-## How It Works
-
-1. Run `qry` from your project directory
-2. QRY calls the AI CLI (Claude/Gemini/etc.) from that directory
-3. The AI CLI has full context of your codebase
-4. Returns SQL specific to your schema
-
-## Documentation
+## Docs
 
 - [Setup Guide](docs/SETUP.md)
 - [API Reference](docs/API.md)
@@ -136,4 +112,4 @@ QRY wraps existing AI CLI tools. Install at least one:
 
 ## License
 
-[MIT](LICENSE)
+MIT

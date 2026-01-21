@@ -2,38 +2,69 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/amansingh-afk/qry/internal/backend"
 	"github.com/amansingh-afk/qry/internal/guardrails"
 	"github.com/amansingh-afk/qry/internal/output"
 	"github.com/amansingh-afk/qry/internal/prompt"
 	"github.com/amansingh-afk/qry/internal/ui"
+	"github.com/spf13/cobra"
 )
 
-func runQuery(query string) {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
+var queryCmd = &cobra.Command{
+	Use:     "q [query]",
+	Aliases: []string{"query"},
+	Short:   "Generate SQL from natural language",
+	Example: `  qry q "get active users"
+  qry q "count orders" --json
+  qry q "find users" -b gemini -m pro
+  qry q "get recent" -d postgresql`,
+	Args: cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		runQuery(args[0])
+	},
+}
 
-	b, err := backend.Get(getBackend())
+func init() {
+	queryCmd.Flags().BoolVar(&jsonFlag, "json", false, "output JSON")
+	queryCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "show prompt without running")
+}
+
+func runQuery(query string) {
+	dialect := getDialect()
+	sqlPrompt := prompt.BuildSQL(query, dialect)
+
+	if dryRunFlag {
+		ui.Info("Prompt:")
+		fmt.Println(sqlPrompt)
+		return
+	}
+
+	b, err := getBackend()
 	if err != nil {
 		ui.Error(err.Error())
 		os.Exit(1)
 	}
 
-	if !b.Available() {
-		ui.Error("%s is not installed. Install it first.", b.Name())
-		os.Exit(1)
+	model := getModel(b.Name())
+
+	opts := backend.Options{
+		Model:   model,
+		Dialect: dialect,
 	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	ctx, cancelTimeout := context.WithTimeout(ctx, getTimeout())
+	defer cancelTimeout()
 
 	ui.Thinking(b.Name())
 
-	start := time.Now()
-	sqlPrompt := prompt.BuildSQL(query)
-	result, err := b.Query(ctx, sqlPrompt, getWorkDir())
-	elapsed := time.Since(start)
+	result, err := b.Query(ctx, sqlPrompt, workDir, opts)
 
 	ui.ClearLine()
 
@@ -42,15 +73,15 @@ func runQuery(query string) {
 		os.Exit(1)
 	}
 
-	sql := prompt.ExtractSQL(result)
+	sql := prompt.ExtractSQL(result.Response)
 
 	if warning := guardrails.Check(sql); warning != "" {
 		ui.Warning(warning)
 	}
 
-	if jsonOut {
-		output.JSON(os.Stdout, sql, b.Name(), elapsed)
+	if jsonFlag {
+		output.JSON(os.Stdout, sql, b.Name(), model, dialect)
 	} else {
-		output.Pretty(os.Stdout, sql, b.Name(), elapsed)
+		output.Pretty(os.Stdout, sql, b.Name(), model)
 	}
 }
