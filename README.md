@@ -1,20 +1,10 @@
 # QRY
 
+> Natural language to SQL that actually knows your schema — no sync required.
+
 **Ask. Get SQL.**
 
-Natural language to SQL using your existing LLM CLI.
-
-```bash
-qry
-```
-
-```
-> get users who signed up last week
-SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days';
-
-> filter by active only
-SELECT * FROM users WHERE created_at >= NOW() - INTERVAL '7 days' AND status = 'active';
-```
+![QRY Demo](docs/qry.gif)
 
 ## How it works
 
@@ -152,6 +142,8 @@ defaults:
 | `prompt` | Prompt template with `{{dialect}}`, `{{version}}`, `{{query}}` variables |
 
 ## API Server
+
+Build Slack bots, admin tools, or n8n workflows on top of QRY.
 
 Run from your project directory:
 
