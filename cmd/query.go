@@ -20,7 +20,7 @@ var queryCmd = &cobra.Command{
 	Short:   "Generate SQL from natural language",
 	Example: `  qry q "get active users"
   qry q "count orders" --json
-  qry q "find users" -b gemini -m pro
+  qry q "find users" -b claude -m sonnet
   qry q "get recent" -d postgresql`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {

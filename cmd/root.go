@@ -38,7 +38,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(loadConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&backendFlag, "backend", "b", "", "backend (claude, gemini, codex, cursor)")
+	rootCmd.PersistentFlags().StringVarP(&backendFlag, "backend", "b", "", "backend (claude, codex, cursor)")
 	rootCmd.PersistentFlags().StringVarP(&modelFlag, "model", "m", "", "model to use")
 	rootCmd.PersistentFlags().StringVarP(&dialectFlag, "dialect", "d", "", "SQL dialect (postgresql, mysql, sqlite)")
 	rootCmd.PersistentFlags().DurationVarP(&timeoutFlag, "timeout", "t", 0, "timeout")
@@ -62,9 +62,8 @@ func loadConfig() {
 	viper.SetDefault("timeout", "2m")
 	viper.SetDefault("session.ttl", "7d")
 	viper.SetDefault("defaults.claude", "haiku")
-	viper.SetDefault("defaults.gemini", "gemini-2.0-flash")
 	viper.SetDefault("defaults.codex", "gpt-4o-mini")
-	viper.SetDefault("defaults.cursor", "gpt-4o-mini")
+	viper.SetDefault("defaults.cursor", "auto")
 
 	_ = viper.ReadInConfig()
 }

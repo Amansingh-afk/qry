@@ -82,14 +82,14 @@ func (m *MyBackend) Query(ctx context.Context, prompt string, workDir string) (s
 ```go
 var registry = map[string]Backend{
     "claude":    &Claude{},
-    "gemini":    &Gemini{},
     "codex":     &Codex{},
     "cursor":    &Cursor{},
+    // "gemini": &Gemini{}, // WIP
     "mybackend": &MyBackend{},  // Add here
 }
 
 func List() []string {
-    return []string{"claude", "gemini", "codex", "cursor", "mybackend"}
+    return []string{"claude", "codex", "cursor", "mybackend"}
 }
 ```
 

@@ -8,7 +8,7 @@
 
 ## How it works
 
-QRY wraps LLM CLIs (Claude Code, Gemini CLI, Codex, Cursor) that already understand your codebase. No custom indexing, no embeddings, no schema sync — it leverages their built-in context awareness.
+QRY wraps LLM CLIs (Claude Code, Codex, Cursor) that already understand your codebase. No custom indexing, no embeddings, no schema sync — it leverages their built-in context awareness.
 
 **Why this matters:**
 - New table? Just `git pull`. The CLI already sees it.
@@ -127,14 +127,13 @@ prompt: |                    # Customizable prompt template
 
 defaults:
   claude: haiku
-  gemini: gemini-2.0-flash
   codex: gpt-4o-mini
-  cursor: gpt-4o-mini
+  cursor: auto
 ```
 
 | Field | Description |
 |-------|-------------|
-| `backend` | LLM CLI to use (claude, gemini, codex, cursor) |
+| `backend` | LLM CLI to use (claude, codex, cursor) |
 | `dialect` | SQL syntax (postgresql, mysql, sqlite) |
 | `db_version` | Database version for accurate syntax (e.g., `16`, `8.0`) |
 | `timeout` | Request timeout |
@@ -176,9 +175,9 @@ curl -X DELETE http://localhost:7133/session
 | Backend | Default Model | Install |
 |---------|---------------|---------|
 | Claude | haiku | `npm i -g @anthropic-ai/claude-code` |
-| Gemini | gemini-2.0-flash | `npm i -g @google/gemini-cli` |
 | Codex | gpt-4o-mini | `npm i -g @openai/codex` |
-| Cursor | gpt-4o-mini | `curl -fsSL https://cursor.com/install \| sh` |
+| Cursor | auto | `curl -fsSL https://cursor.com/install \| sh` |
+| Gemini | — | *WIP* |
 
 Use `-m` to override: `qry q "query" -m sonnet`
 

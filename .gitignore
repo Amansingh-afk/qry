@@ -68,3 +68,7 @@ coverage.html
 tmp/
 temp/
 *.tmp
+
+
+# customfiles
+docs/thoughts.txt

@@ -8,14 +8,14 @@ QRY needs at least one LLM CLI installed:
 # Claude (recommended)
 npm i -g @anthropic-ai/claude-code
 
-# Gemini
-npm i -g @google/gemini-cli
-
 # Codex
 npm i -g @openai/codex
 
 # Cursor
 curl -fsSL https://cursor.com/install | sh
+
+# Gemini (WIP)
+# npm i -g @google/gemini-cli
 ```
 
 ## 2. Install QRY
@@ -72,14 +72,13 @@ prompt: |                    # Customizable prompt
 
 defaults:
   claude: haiku
-  gemini: gemini-2.0-flash
   codex: gpt-4o-mini
-  cursor: gpt-4o-mini
+  cursor: auto
 ```
 
 | Field | Values | Description |
 |-------|--------|-------------|
-| backend | claude, gemini, codex, cursor | LLM CLI to use |
+| backend | claude, codex, cursor | LLM CLI to use |
 | model | (depends on backend) | Model to use |
 | dialect | postgresql, mysql, sqlite | SQL syntax |
 | db_version | 16, 8.0, 3, etc. | Database version for accurate syntax |

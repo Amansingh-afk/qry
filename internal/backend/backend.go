@@ -25,7 +25,7 @@ type Backend interface {
 
 var registry = map[string]Backend{
 	"claude": &Claude{},
-	"gemini": &Gemini{},
+	// "gemini": &Gemini{}, // WIP: needs account testing
 	"codex":  &Codex{},
 	"cursor": &Cursor{},
 }
@@ -39,7 +39,7 @@ func Get(name string) (Backend, error) {
 }
 
 func List() []string {
-	return []string{"claude", "gemini", "codex", "cursor"}
+	return []string{"claude", "codex", "cursor"}
 }
 
 func Available() []Backend {

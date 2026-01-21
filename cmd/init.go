@@ -30,9 +30,8 @@ type SessionConfig struct {
 
 var defaultModels = map[string]string{
 	"claude": "haiku",
-	"gemini": "gemini-2.0-flash",
 	"codex":  "gpt-4o-mini",
-	"cursor": "gpt-4o-mini",
+	"cursor": "auto",
 }
 
 const defaultPrompt = `You are a SQL expert. Based on the codebase context (schemas, migrations, models), generate ONLY the SQL query.
