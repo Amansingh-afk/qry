@@ -55,15 +55,37 @@ Just run `qry`:
 qry
 ```
 
-Follow-up questions work naturally:
+Opens an interactive TUI with syntax highlighting, history, and more:
 
 ```
-> get active users
-SELECT * FROM users WHERE status = 'active';
-
-> filter by last 7 days
-SELECT * FROM users WHERE status = 'active' AND created_at >= NOW() - INTERVAL '7 days';
+╭──────────────────────────────────────────────────────────────╮
+│ QRY v0.4.0                          myapp | claude/haiku    │
+├──────────────────────────────────────────────────────────────┤
+│ ❯ get active users                                          │
+│                                                              │
+│ Generated SQL:                                               │
+│ ────────────────────────────────────────────────────────────│
+│ SELECT * FROM users WHERE status = 'active';                │
+│                                                              │
+│ ⏱ 2.3s  |  Tables: users  |  ✓ READ-ONLY                    │
+├──────────────────────────────────────────────────────────────┤
+│ :h history  ↑↓ prev  :c copy  :? help  :q quit              │
+╰──────────────────────────────────────────────────────────────╯
 ```
+
+**TUI Commands:**
+
+| Command | Action |
+|---------|--------|
+| `:c`, `:copy` | Copy SQL to clipboard |
+| `:h`, `:history` | Toggle history panel |
+| `:e`, `:expand` | Expand long SQL |
+| `:?`, `:help` | Show all commands |
+| `:q`, `:quit` | Exit |
+| `↑` / `↓` | Navigate query history |
+| `Ctrl+C` | Cancel query |
+
+History persists across sessions (stored in `.qry/history.json`).
 
 ## One-shot Mode
 

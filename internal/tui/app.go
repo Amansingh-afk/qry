@@ -71,6 +71,7 @@ type Model struct {
 	history        []HistoryItem
 	historyIdx     int
 	showHistory    bool
+	showHelp       bool
 	copied         bool
 	historyCleared bool
 
@@ -225,6 +226,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return historyClearedResetMsg{}
 					})
 
+				case "help", "?":
+					m.showHelp = !m.showHelp
+					return m, nil
+
 				default:
 					// Unknown command, show error briefly
 					m.err = fmt.Errorf("unknown command: %s", cmd)
@@ -377,6 +382,12 @@ func (m Model) View() string {
 		b.WriteString(m.renderHistory(contentWidth))
 	}
 
+	// Help view
+	if m.showHelp {
+		b.WriteString("\n")
+		b.WriteString(m.renderHelp())
+	}
+
 	// Error
 	if m.err != nil {
 		b.WriteString("\n")
@@ -496,7 +507,21 @@ func (m Model) renderFooter() string {
 		desc string
 	}
 
-	// Always show these
+	// During loading, show cancel option
+	if m.loading {
+		shortcuts = append(shortcuts, struct {
+			key  string
+			desc string
+		}{"^C", "cancel"})
+
+		var parts []string
+		for _, s := range shortcuts {
+			parts = append(parts, shortcutKeyStyle.Render(s.key)+" "+shortcutDescStyle.Render(s.desc))
+		}
+		return " " + strings.Join(parts, "  ")
+	}
+
+	// Normal mode shortcuts
 	shortcuts = append(shortcuts, struct {
 		key  string
 		desc string
@@ -523,7 +548,12 @@ func (m Model) renderFooter() string {
 		}{":e", "expand"})
 	}
 
-	// Always show quit
+	// Help and quit
+	shortcuts = append(shortcuts, struct {
+		key  string
+		desc string
+	}{":?", "help"})
+
 	shortcuts = append(shortcuts, struct {
 		key  string
 		desc string
@@ -556,6 +586,36 @@ func (m Model) renderHistory(width int) string {
 			query = query[:40] + "..."
 		}
 		b.WriteString(fmt.Sprintf(" %s %s\n", dimStyle.Render("·"), metaValueStyle.Render(query)))
+	}
+
+	return b.String()
+}
+
+func (m Model) renderHelp() string {
+	var b strings.Builder
+
+	b.WriteString(sqlHeaderStyle.Render(" Commands:"))
+	b.WriteString("\n")
+
+	commands := []struct {
+		cmd  string
+		desc string
+	}{
+		{":c, :copy", "Copy SQL to clipboard"},
+		{":h, :history", "Toggle history panel"},
+		{":e, :expand", "Expand/collapse long SQL"},
+		{":clear", "Clear current result"},
+		{":clear-history", "Wipe all saved history"},
+		{":help, :?", "Show this help"},
+		{":q, :quit", "Exit"},
+		{"↑ / ↓", "Navigate query history"},
+		{"Ctrl+C", "Cancel query / exit"},
+	}
+
+	for _, c := range commands {
+		b.WriteString(fmt.Sprintf(" %s  %s\n",
+			shortcutKeyStyle.Render(fmt.Sprintf("%-15s", c.cmd)),
+			dimStyle.Render(c.desc)))
 	}
 
 	return b.String()

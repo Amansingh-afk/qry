@@ -93,6 +93,22 @@ defaults:
 qry
 ```
 
+Opens an interactive TUI with SQL highlighting, history, and keyboard shortcuts.
+
+**TUI Commands:**
+
+| Command | Action |
+|---------|--------|
+| `:c`, `:copy` | Copy SQL to clipboard |
+| `:h`, `:history` | Toggle history panel |
+| `:e`, `:expand` | Expand long SQL |
+| `:clear` | Clear current result |
+| `:clear-history` | Wipe saved history |
+| `:?`, `:help` | Show all commands |
+| `:q`, `:quit` | Exit |
+| `↑` / `↓` | Navigate query history |
+| `Ctrl+C` | Cancel query |
+
 **One-shot queries (for scripting):**
 ```bash
 qry q "get active users"
@@ -102,6 +118,8 @@ qry q "get users" | pbcopy
 ```
 
 Both modes share the same session — the LLM indexes your codebase once and remembers context.
+
+History persists across sessions in `.qry/history.json`.
 
 ## Session Management
 
