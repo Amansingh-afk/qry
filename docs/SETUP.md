@@ -150,6 +150,41 @@ qry serve -p 8080      # Custom port
 
 The server manages sessions automatically — clients don't need to track session IDs.
 
+## Security
+
+Protect sensitive data by excluding tables, columns, or patterns from SQL generation.
+
+Add to `.qry.yaml`:
+
+```yaml
+security:
+  mode: strict    # strict = block violations, warn = allow with warning
+  exclude:
+    tables:
+      - users_secrets
+      - api_keys
+    columns:
+      - password_hash
+      - ssn
+      - credit_card
+    patterns:
+      - "*_secret"     # matches user_secret, api_secret
+      - "internal_*"   # matches internal_logs, internal_audit
+```
+
+**How it works:**
+
+1. **Prompt injection** — LLM is told to never access restricted data
+2. **Post-validation** — Generated SQL is parsed and checked for violations
+3. **Response handling** — Block or warn based on mode
+
+| Mode | Behavior |
+|------|----------|
+| `strict` | Blocks SQL and returns error |
+| `warn` | Shows warning but returns SQL (default) |
+
+In `strict` mode, the TUI shows an error and the API returns `403 Forbidden`.
+
 ## Troubleshooting
 
 **"X not installed"**

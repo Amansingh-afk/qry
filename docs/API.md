@@ -47,6 +47,7 @@ curl -X POST http://localhost:7133/query \
   "model": "sonnet",
   "dialect": "postgresql",
   "warning": "",
+  "security_warning": "",
   "session_id": "abc123-def456"
 }
 ```
@@ -58,6 +59,7 @@ curl -X POST http://localhost:7133/query \
 | model | string | Model used |
 | dialect | string | SQL dialect |
 | warning | string | Safety warning (if any) |
+| security_warning | string | Security warning (if in warn mode) |
 | session_id | string | Session ID (managed by server) |
 
 **Error Response**
@@ -65,6 +67,16 @@ curl -X POST http://localhost:7133/query \
 ```json
 {
   "error": "claude not installed"
+}
+```
+
+**Security Violation (403)**
+
+If security mode is `strict` and the query references excluded data:
+
+```json
+{
+  "error": "Security violation: blocked: references table 'api_keys'"
 }
 ```
 
@@ -255,3 +267,30 @@ The API returns warnings for potentially destructive operations:
 - `UPDATE` without `WHERE`
 
 These are warnings only. The SQL is still returned.
+
+## Security
+
+If security rules are configured in `.qry.yaml`, the API enforces them:
+
+**Warn Mode (default)**
+
+SQL is returned with `security_warning` field:
+
+```json
+{
+  "sql": "SELECT * FROM api_keys WHERE ...",
+  "security_warning": "Security violation: query references excluded data\n  - table: api_keys (matched rule: api_*)\n"
+}
+```
+
+**Strict Mode**
+
+Returns `403 Forbidden`:
+
+```json
+{
+  "error": "Security violation: blocked: references table 'api_keys'"
+}
+```
+
+See the [Setup Guide](./SETUP.md) for configuration details.

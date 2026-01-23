@@ -21,11 +21,23 @@ type Config struct {
 	Timeout   string            `yaml:"timeout,omitempty"`
 	Defaults  map[string]string `yaml:"defaults,omitempty"`
 	Session   SessionConfig     `yaml:"session,omitempty"`
+	Security  SecurityConfig    `yaml:"security,omitempty"`
 	Prompt    string            `yaml:"prompt,omitempty"`
 }
 
 type SessionConfig struct {
 	TTL string `yaml:"ttl,omitempty"`
+}
+
+type SecurityConfig struct {
+	Mode    string        `yaml:"mode,omitempty"`
+	Exclude ExcludeConfig `yaml:"exclude,omitempty"`
+}
+
+type ExcludeConfig struct {
+	Tables   []string `yaml:"tables,omitempty"`
+	Columns  []string `yaml:"columns,omitempty"`
+	Patterns []string `yaml:"patterns,omitempty"`
 }
 
 var defaultModels = map[string]string{

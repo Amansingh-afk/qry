@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amansingh-afk/qry/internal/history"
+	"github.com/amansingh-afk/qry/internal/security"
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -74,6 +75,10 @@ type Model struct {
 	showHelp       bool
 	copied         bool
 	historyCleared bool
+
+	// Security
+	securityResult  *security.Result
+	securityBlocked bool
 
 	// Query execution
 	queryFunc QueryFunc
@@ -286,6 +291,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err
 			return m, nil
 		}
+
+		// Security validation
+		m.securityResult = security.Validate(msg.result.SQL)
+		sec := security.Get()
+		m.securityBlocked = sec.IsBlocked(m.securityResult)
+
+		// If blocked by security, don't show SQL
+		if m.securityBlocked {
+			m.currentSQL = ""
+			m.err = fmt.Errorf("%s", m.securityResult.Error())
+			m.textInput.SetValue("")
+			return m, nil
+		}
+
 		m.currentSQL = msg.result.SQL
 		m.currentTime = msg.result.Duration
 		m.tables = extractTables(msg.result.SQL)
@@ -487,6 +506,11 @@ func (m Model) renderMetadata(width int) string {
 		safetyStr = safetyDanger.Render("✗ DESTRUCTIVE")
 	}
 	parts = append(parts, safetyStr)
+
+	// Security warning (warn mode)
+	if m.securityResult != nil && !m.securityResult.Valid && !m.securityBlocked {
+		parts = append(parts, safetyWarn.Render("⚠ SECURITY WARNING"))
+	}
 
 	// Copied indicator
 	if m.copied {

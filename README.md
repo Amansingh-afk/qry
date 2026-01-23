@@ -156,6 +156,41 @@ defaults:
 | `session.ttl` | Session lifetime (e.g., `7d`, `24h`) |
 | `prompt` | Prompt template with `{{dialect}}`, `{{version}}`, `{{query}}` variables |
 
+## Security
+
+Exclude sensitive tables and columns from query generation. QRY uses defense-in-depth:
+
+1. **Prompt injection** - LLM is told to never access restricted data
+2. **Post-validation** - Generated SQL is parsed and checked
+3. **Response handling** - Block or warn based on mode
+
+Add to `.qry.yaml`:
+
+```yaml
+security:
+  mode: strict    # strict = block, warn = allow with warning
+  exclude:
+    tables:
+      - users_secrets
+      - api_keys
+    columns:
+      - password_hash
+      - ssn
+    patterns:
+      - "*_secret"
+      - "api_*"
+```
+
+| Mode | Behavior |
+|------|----------|
+| `strict` | Blocks SQL that references excluded data |
+| `warn` | Shows warning but returns SQL (default) |
+
+**Patterns** support wildcards:
+- `*_secret` - matches `user_secret`, `api_secret`, etc.
+- `api_*` - matches `api_keys`, `api_tokens`, etc.
+- `?` - matches single character
+
 ## API Server
 
 Build Slack bots, admin tools, or n8n workflows on top of QRY.

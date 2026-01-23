@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/amansingh-afk/qry/internal/security"
 	"github.com/spf13/viper"
 )
 
@@ -17,7 +18,7 @@ Rules:
 Request: {{query}}`
 
 // BuildSQL builds the full prompt for the first query in a session.
-// This includes the role, rules, and the query.
+// This includes the role, rules, security rules, and the query.
 func BuildSQL(query string, dialect string) string {
 	// Get prompt template from config or use default
 	template := viper.GetString("prompt")
@@ -37,6 +38,12 @@ func BuildSQL(query string, dialect string) string {
 	result = strings.ReplaceAll(result, "{{query}}", query)
 	result = strings.ReplaceAll(result, "{{dialect}}", dialect)
 	result = strings.ReplaceAll(result, "{{version}}", versionStr)
+
+	// Add security rules if configured
+	securityRules := security.PromptAddition()
+	if securityRules != "" {
+		result += securityRules
+	}
 
 	return result
 }

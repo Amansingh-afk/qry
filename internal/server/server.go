@@ -10,6 +10,7 @@ import (
 	"github.com/amansingh-afk/qry/internal/backend"
 	"github.com/amansingh-afk/qry/internal/guardrails"
 	"github.com/amansingh-afk/qry/internal/prompt"
+	"github.com/amansingh-afk/qry/internal/security"
 	"github.com/amansingh-afk/qry/internal/session"
 	"github.com/spf13/viper"
 )
@@ -23,12 +24,13 @@ type QueryRequest struct {
 }
 
 type QueryResponse struct {
-	SQL       string `json:"sql"`
-	Backend   string `json:"backend"`
-	Model     string `json:"model,omitempty"`
-	Dialect   string `json:"dialect,omitempty"`
-	Warning   string `json:"warning,omitempty"`
-	SessionID string `json:"session_id,omitempty"` // For multi-turn conversations
+	SQL             string `json:"sql"`
+	Backend         string `json:"backend"`
+	Model           string `json:"model,omitempty"`
+	Dialect         string `json:"dialect,omitempty"`
+	Warning         string `json:"warning,omitempty"`
+	SecurityWarning string `json:"security_warning,omitempty"`
+	SessionID       string `json:"session_id,omitempty"` // For multi-turn conversations
 }
 
 type ErrorResponse struct {
@@ -168,15 +170,34 @@ func handleQuery(w http.ResponseWriter, r *http.Request, workDir string) {
 	}
 
 	sql := prompt.ExtractSQL(result.Response)
+
+	// Security validation
+	secResult := security.Validate(sql)
+	sec := security.Get()
+
+	if sec.IsBlocked(secResult) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
+			Error: "Security violation: " + secResult.Summary(),
+		})
+		return
+	}
+
+	var securityWarning string
+	if sec.ShouldWarn(secResult) {
+		securityWarning = secResult.Error()
+	}
+
 	warning := guardrails.Check(sql)
 
 	_ = json.NewEncoder(w).Encode(QueryResponse{
-		SQL:       sql,
-		Backend:   b.Name(),
-		Model:     model,
-		Dialect:   dialect,
-		Warning:   warning,
-		SessionID: result.SessionID,
+		SQL:             sql,
+		Backend:         b.Name(),
+		Model:           model,
+		Dialect:         dialect,
+		Warning:         warning,
+		SecurityWarning: securityWarning,
+		SessionID:       result.SessionID,
 	})
 }
 

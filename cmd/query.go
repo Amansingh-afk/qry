@@ -10,6 +10,7 @@ import (
 	"github.com/amansingh-afk/qry/internal/guardrails"
 	"github.com/amansingh-afk/qry/internal/output"
 	"github.com/amansingh-afk/qry/internal/prompt"
+	"github.com/amansingh-afk/qry/internal/security"
 	"github.com/amansingh-afk/qry/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -88,6 +89,21 @@ func runQuery(query string) {
 	saveSession(b.Name(), result.SessionID)
 
 	sql := prompt.ExtractSQL(result.Response)
+
+	// Security validation
+	secResult := security.Validate(sql)
+	sec := security.Get()
+
+	if sec.IsBlocked(secResult) {
+		ui.Error("Security violation: query blocked")
+		fmt.Fprintln(os.Stderr, secResult.Error())
+		os.Exit(1)
+	}
+
+	if sec.ShouldWarn(secResult) {
+		ui.Warning("Security warning: query references restricted data")
+		fmt.Fprintln(os.Stderr, secResult.Error())
+	}
 
 	if warning := guardrails.Check(sql); warning != "" {
 		ui.Warning("%s", warning)
