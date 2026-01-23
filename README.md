@@ -8,12 +8,12 @@
 
 ## How it works
 
-QRY wraps LLM CLIs (Claude Code, Codex, Cursor) that already understand your codebase. No custom indexing, no embeddings, no schema sync — it leverages their built-in context awareness.
+QRY wraps CLIs (Claude Code, Codex, Cursor) that already understand your codebase. No custom indexing, no embeddings, no schema sync — it leverages their built-in context awareness. It is basically Repo2SQL.
 
 **Why this matters:**
 - New table? Just `git pull`. The CLI already sees it.
 - Schema change? No manual updates. It's already indexed.
-- Complex joins? The LLM knows your actual table relationships.
+- Complex joins? The backend knows your actual table relationships.
 
 Traditional NL2SQL tools require you to maintain schema definitions and regenerate embeddings. QRY doesn't — the underlying CLI handles all of that.
 
