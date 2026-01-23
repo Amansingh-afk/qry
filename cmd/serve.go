@@ -14,7 +14,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.ServerStarting(port, workDir)
 		if err := server.Start(port, workDir); err != nil {
-			ui.Error(err.Error())
+			ui.Error("%s", err.Error())
 		}
 	},
 }

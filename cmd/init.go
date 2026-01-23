@@ -68,7 +68,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	ui.Step("Detecting repository...")
 	ui.Pause()
 	repoName := detectRepoName(workDir)
-	ui.StepDone(repoName)
+	ui.StepDone("%s", repoName)
 
 	// Handle --force: clear existing session
 	if forceInit {
@@ -102,7 +102,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	}
 
 	for _, b := range available {
-		ui.StepDone(b.Name())
+		ui.StepDone("%s", b.Name())
 	}
 
 	selected := available[0].Name()

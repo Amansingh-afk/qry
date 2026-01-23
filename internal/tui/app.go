@@ -73,7 +73,6 @@ type Model struct {
 	showHistory    bool
 	copied         bool
 	historyCleared bool
-	copyTimer      *time.Timer
 
 	// Query execution
 	queryFunc QueryFunc

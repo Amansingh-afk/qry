@@ -36,7 +36,7 @@ func init() {
 func runQuery(query string) {
 	b, err := getBackend()
 	if err != nil {
-		ui.Error(err.Error())
+		ui.Error("%s", err.Error())
 		os.Exit(1)
 	}
 
@@ -80,7 +80,7 @@ func runQuery(query string) {
 	ui.ClearLine()
 
 	if err != nil {
-		ui.Error(err.Error())
+		ui.Error("%s", err.Error())
 		os.Exit(1)
 	}
 
@@ -90,7 +90,7 @@ func runQuery(query string) {
 	sql := prompt.ExtractSQL(result.Response)
 
 	if warning := guardrails.Check(sql); warning != "" {
-		ui.Warning(warning)
+		ui.Warning("%s", warning)
 	}
 
 	if jsonFlag {

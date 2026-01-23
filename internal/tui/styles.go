@@ -12,7 +12,6 @@ var (
 	red    = lipgloss.Color("#FF5555")
 	gray   = lipgloss.Color("#6272A4")
 	white  = lipgloss.Color("#F8F8F2")
-	dark   = lipgloss.Color("#282A36")
 
 	// SQL syntax highlighting colors
 	sqlKeyword = lipgloss.Color("#FF79C6") // pink
@@ -29,11 +28,6 @@ var (
 			BorderForeground(gray).
 			Padding(0, 1)
 
-	// Header section
-	headerStyle = lipgloss.NewStyle().
-			Foreground(white).
-			Bold(true)
-
 	// QRY logo in header
 	logoQ = lipgloss.NewStyle().Foreground(cyan).Bold(true)
 	logoR = lipgloss.NewStyle().Foreground(pink).Bold(true)
@@ -44,7 +38,6 @@ var (
 
 	// Prompt style
 	promptStyle = lipgloss.NewStyle().Foreground(pink).Bold(true)
-	askStyle    = lipgloss.NewStyle().Foreground(gray)
 	inputStyle  = lipgloss.NewStyle().Foreground(white)
 
 	// SQL output section

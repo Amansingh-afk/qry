@@ -18,7 +18,7 @@ import (
 func runChat(cmd *cobra.Command, args []string) {
 	b, err := getBackend()
 	if err != nil {
-		ui.Error(err.Error())
+		ui.Error("%s", err.Error())
 		os.Exit(1)
 	}
 
